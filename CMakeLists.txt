@@ -1,0 +1,4 @@
+cmake_minimum_required(VERSION 4.1)
+project(battleship)
+
+add_subdirectory(src)
