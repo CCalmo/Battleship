@@ -1,5 +1,0 @@
-/Users/chris/Desktop/Projects/Random Small Projects/C++/Terminal based/ship/build/CMakeFiles/edit_cache.dir
-/Users/chris/Desktop/Projects/Random Small Projects/C++/Terminal based/ship/build/CMakeFiles/rebuild_cache.dir
-/Users/chris/Desktop/Projects/Random Small Projects/C++/Terminal based/ship/build/src/CMakeFiles/battleship.dir
-/Users/chris/Desktop/Projects/Random Small Projects/C++/Terminal based/ship/build/src/CMakeFiles/edit_cache.dir
-/Users/chris/Desktop/Projects/Random Small Projects/C++/Terminal based/ship/build/src/CMakeFiles/rebuild_cache.dir
