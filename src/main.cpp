@@ -1,24 +1,20 @@
 #include <player.h>
 #include <bot.h>
+
 #include <iostream>
+#include <filesystem>
 
 void printResult(board::attackResult result);
 
-int main(int argc, char* argv[])
+int main()
 {
-    if (argc != 2)
-    {
-        std::cout << "Usage: ./battleship CSV_FILE\n";
-        return -1;
-    }
-
+    const char* shipInfoDirectory = "ships/ships.csv";
     player player;
     bot bot;
 
     // Let both players place ships or exit if something goes wrong
-    if (!player.placeShips(argv[1]) || !bot.placeShips(argv[1]))
+    if (!player.placeShips(shipInfoDirectory) || !bot.placeShips(shipInfoDirectory))
     {
-        std::cout << "Make sure CSV follows the format: \"shipname(string),length(int)\" name can be up to 20 characters";
         return -1;
     }
 
