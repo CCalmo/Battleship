@@ -126,7 +126,7 @@ bool player::placeShips(const char* fileName)
     // Only read lines for how ever many ships the 
     for (int i = 0; i < board::NUM_OF_SHIPS; i++)
     {
-        char shipName[board::MAX_NAME_LENGTH];
+        char shipName[board::MAX_SHIP_NAME_LENGTH];
         int shipLength;
 
         if (!boards.readShipInfo(shipFile, shipName, shipLength))
@@ -163,7 +163,7 @@ board::attackResult player::attack(board &opponentBoard)
         coordinateAttacking = getCoordinate("Where would you like to attack? (A1 - J10) ");
         boards.configureCoordinate(coordinateAttacking);
     }
-    while(!boards.spaceAvailable(board::playerBoards::attackBoard, coordinateAttacking));
+    while(!boards.isSpaceAvailable(board::playerBoards::attackBoard, coordinateAttacking));
 
     board::attackResult result = opponentBoard.attacked(coordinateAttacking);
     boards.updateBoard(board::playerBoards::attackBoard, result, coordinateAttacking);

@@ -156,13 +156,30 @@ board::board()
     }
 }
 
+// Return the name of the ship that is found at a given coordinate, (returns "EMPTY" if no ship is found)
+const char* board::getShipName(coordinate coordinateSearching) const
+{
+    // Search all ships return the name if one is found
+    for (int i = 0; i < NUM_OF_SHIPS; i++)
+    {
+        for (int j = 0; j < m_playerShips[i].length; j++)
+        {
+            if (m_playerShips[i].location[j] == coordinateSearching)
+            {
+                return m_playerShips[i].name;
+            }
+        }
+    }
+    return "EMPTY\n";
+}
+
 // Check to see if the player has lost
 bool board::lost() const
 {
     // Go through all the ships and see if at least 1 is still alive
     for (int i = 0; i < NUM_OF_SHIPS; i++)
     {
-        if (playerShips[i].alive)
+        if (m_playerShips[i].alive)
         {
             return false;
         }
@@ -190,7 +207,7 @@ bool board::readShipInfo(std::ifstream &file, char *shipName, int &shipLength) c
         int numIndex = fileLine.find(',') + 1;
 
         // If the name is longer than the max length, skip it
-        if (endOfName > board::MAX_NAME_LENGTH)
+        if (endOfName > board::MAX_SHIP_NAME_LENGTH)
         {
             continue;
         }
@@ -213,9 +230,10 @@ bool board::readShipInfo(std::ifstream &file, char *shipName, int &shipLength) c
     return true;
 }
 
-// Check to see if the chosen board is empty at a configured coordinate
-bool board::spaceAvailable(playerBoards boardChecking, coordinate locationChecking) const
+// Check to see if the chosen board is empty
+bool board::isSpaceAvailable(playerBoards boardChecking, coordinate locationChecking) const
 {
+
     const char (*board)[ROW_LENGTH] = nullptr;
     char emptyCharacter;
     switch (boardChecking)
@@ -234,6 +252,104 @@ bool board::spaceAvailable(playerBoards boardChecking, coordinate locationChecki
     } 
 
     return board[locationChecking.y][locationChecking.x] == emptyCharacter;
+}
+
+// Increment the coordinates based on the given direction and checks if they are within the board. Reverts the increment if outside bounds
+bool board::incrementCoordinate(direction shipDirection, coordinate &coordinateIncrementing) const
+{
+    constexpr coordinate LOWER_BOUND = {5, 1};
+    constexpr coordinate UPPER_BOUND = {41, 10};
+
+    coordinateIncrementing += shipDirection;
+
+    if (coordinateIncrementing < LOWER_BOUND || coordinateIncrementing > UPPER_BOUND)
+    {
+        coordinateIncrementing -= shipDirection;
+        return false;
+    }
+    return true;
+}
+
+// Returns true if you can place the ship and edits the ship's info
+bool board::placeShip(int currentShip, int length, char name[MAX_SHIP_NAME_LENGTH + 1], direction shipDirection, coordinate startingCoord)
+{
+    configureCoordinate(startingCoord);
+    // Store the coordiantes into a temporary array in case the ship is out of bounds.
+    for (int i = 0; i < length; i++)
+    {
+        if (!isSpaceAvailable(playerBoards::shipBoard, startingCoord))
+            return false;
+        
+        m_playerShips[currentShip].location[i] = startingCoord;
+        m_playerShips[currentShip].placesHit[i] = false;
+
+        if (!incrementCoordinate(shipDirection, startingCoord) && i + 1 != length)
+            return false;
+    }
+    m_playerShips[currentShip].length = length;
+    std::strcpy(m_playerShips[currentShip].name, name);
+
+    printShipOnBoard(currentShip);
+    return true;
+}
+
+// Updates a board to reflect the result of the either a received attack or attack done
+void board::updateBoard(playerBoards board, attackResult result, coordinate coordinateAttacked)
+{
+    // Get the correct pointer to the board we are going to edit
+    char (*boardUpdating)[ROW_LENGTH] = nullptr;
+    if (board == playerBoards::shipBoard)
+    {
+        boardUpdating = shipBoard;
+    }
+    else
+    {
+        boardUpdating = attackBoard;
+    }
+
+   if (result == board::attackResult::miss)
+    {
+        boardUpdating[coordinateAttacked.y][coordinateAttacked.x] = 'O';
+    }
+    else
+    {
+        boardUpdating[coordinateAttacked.y][coordinateAttacked.x] = 'X';
+    }
+}
+
+// WITH THE INTRODUCTION OF NEW DEFEATED ENUM, AN UPDATE TO BOT.CPP IS NEEDED
+// Return a result based on an attack at a given configured coordinate
+board::attackResult board::attacked(coordinate locationHit)
+{
+    // Set the default outcome to miss
+    board::attackResult result = board::attackResult::miss;
+
+    // Go through all ships and see if any got hit
+    for (int shipIndex = 0; shipIndex < NUM_OF_SHIPS; shipIndex++)
+    {
+        // Skip the current ship if it's already sunk
+        if (!m_playerShips[shipIndex].alive)
+        {
+            continue;
+        }
+
+        // If the result is a hit, no need to check the other ships
+        result = wasShipHit(locationHit, shipIndex);
+        if (result != board::attackResult::miss)
+        {
+            break;
+        }
+    }
+
+    updateBoard(playerBoards::shipBoard, result, locationHit);
+
+    // only when the a ship is sank, we check if the player lost
+    if (result == board::attackResult::sank && lost())
+    {
+        result = board::attackResult::opponentDefeated;
+    }
+
+    return result;
 }
 
 // Prints the given board.
@@ -270,162 +386,67 @@ void board::configureCoordinate(coordinate &coordinateConfiguring) const
     coordinateConfiguring.x = coordinateConfiguring.x * EMPTY_ROW_SPACE + EMPTY_COLUMN_SPACE;
 }
 
-// Increment the coordinates based on the given direction and checks if they are within the board. Reverts the increment if outside bounds
-bool board::incrementCoordinate(direction shipDirection, coordinate &coordinateIncrementing) const
-{
-    constexpr coordinate LOWER_BOUND = {5, 1};
-    constexpr coordinate UPPER_BOUND = {41, 10};
-
-    coordinateIncrementing += shipDirection;
-
-    if (coordinateIncrementing < LOWER_BOUND || coordinateIncrementing > UPPER_BOUND)
-    {
-        coordinateIncrementing -= shipDirection;
-        return false;
-    }
-    return true;
-}
-
-// Returns true if you can place the ship and edits the ship's info
-bool board::placeShip(int currentShip, int length, char name[MAX_NAME_LENGTH + 1], direction shipDirection, coordinate startingCoord)
-{
-    configureCoordinate(startingCoord);
-
-    // Store the coordiantes into a temporary array in case the ship is out of bounds.
-    for (int i = 0; i < length; i++)
-    {
-        if (!spaceAvailable(playerBoards::shipBoard, startingCoord))
-            return false;
-        
-        playerShips[currentShip].location[i] = startingCoord;
-        playerShips[currentShip].placesHit[i] = false;
-
-        if (!incrementCoordinate(shipDirection, startingCoord) && i + 1 != length)
-            return false;
-    }
-    playerShips[currentShip].length = length;
-    std::strcpy(playerShips[currentShip].name, name);
-
-    printShip(currentShip);
-    return true;
-}
-
 // Prints the ship onto the board
-void board::printShip(int currentShip)
+void board::printShipOnBoard(int currentShip)
 {
     const static coordinate nulCoordinate = {0, 0};
     for (int i = 0; i < MAX_SHIP_LENGTH; i++)
     {
-        if (playerShips[currentShip].location[i] == nulCoordinate)
+        if (m_playerShips[currentShip].location[i] == nulCoordinate)
         {
             return;
         }
-        shipBoard[playerShips[currentShip].location[i].y][playerShips[currentShip].location[i].x] = '#';
+        shipBoard[m_playerShips[currentShip].location[i].y][m_playerShips[currentShip].location[i].x] = '#';
     }
 }
 
 // Check if the coordinate that was hit has an occupying ship
 board::attackResult board::wasShipHit(coordinate location, int currentShip)
 {
-    int HitsTaken = 0;
-    bool hit = false, sank = false, discovered = false;
+    int hitsTaken = 0;
+    bool shipWasHit = false;
+    attackResult result;
 
-    // Iterate though all the locations on the ship and see if it occupyies the coordinate attacked
-    for (int i = 0; i < playerShips[currentShip].length; i++)
+    // Iterate though all the locations on the ship and track how many times it's hit
+    for (int i = 0; i < m_playerShips[currentShip].length; i++)
     {
-        // The ship is already hit at this location so we just keep track of the hits
-        if (playerShips[currentShip].placesHit[i])
+        // The ship is already hit at this location, we skip the check
+        if (m_playerShips[currentShip].placesHit[i])
         {
-            HitsTaken++;
+            hitsTaken++;
             continue;
         }
 
         // The ship was hit at this location so we mark it as hit or discovered
-        if (playerShips[currentShip].location[i] == location)
+        if (m_playerShips[currentShip].location[i] == location)
         {
-            hit = true;
-            HitsTaken++;
-            playerShips[currentShip].placesHit[i] = true;
-
-            if (!playerShips[currentShip].discovered)
+            if(!m_playerShips[currentShip].discovered)
             {
-                playerShips[currentShip].discovered = true;
-                discovered = true;
+                m_playerShips[currentShip].discovered = true;
+                result = attackResult::discover;
             }
+            else
+            {
+                result = attackResult::hit;
+            }
+
+            m_playerShips[currentShip].placesHit[i] = true;
+            shipWasHit = true;
+            hitsTaken++;
         }
     }
 
-    // If the hits is equal to the hits taken, it's down
-    if (playerShips[currentShip].length == HitsTaken)
+    // Check if the ship is down or if it never received a hit
+    if (m_playerShips[currentShip].length == hitsTaken)
     {
-        playerShips[currentShip].alive = false;
-        sank = true;
+        m_playerShips[currentShip].alive = false;
+        result = attackResult::sank;
+    }
+    else if (!shipWasHit)
+    {
+        result = attackResult::miss;
     }
 
-    if (hit)
-    {
-        if (discovered)
-        {
-            return attackResult::discover;
-        }
-        else if (sank)
-        {
-            return attackResult::sank;
-        }
-        else
-        {
-            return attackResult::hit;
-        }
-    }
-    // There was no hit
-    return attackResult::miss;
-}
 
-// Updates a board to reflect the result of the either a received attack or attack done
-void board::updateBoard(playerBoards board, attackResult result, coordinate coordinateAttacked)
-{
-    // Get the correct pointer to the board we are going to edit
-    char (*boardUpdating)[ROW_LENGTH] = nullptr;
-    if (board == playerBoards::shipBoard)
-    {
-        boardUpdating = shipBoard;
-    }
-    else
-    {
-        boardUpdating = attackBoard;
-    }
-
-   if (result == board::attackResult::miss)
-    {
-        boardUpdating[coordinateAttacked.y][coordinateAttacked.x] = 'O';
-    }
-    else
-    {
-        boardUpdating[coordinateAttacked.y][coordinateAttacked.x] = 'X';
-    }
-}
-
-// Return a result based on an attack at a given configured coordinate
-board::attackResult board::attacked(coordinate locationHit)
-{
-    board::attackResult result;
-    for (int i = 0; i < NUM_OF_SHIPS; i++)
-    {
-        // Ship the current ship if it's already sank
-        if (!playerShips[i].alive)
-        {
-            continue;
-        }
-
-        // If the result is not a miss, break out of this loop as we found the ship that was hit.
-        // (if there was none, the result should be miss in the end)
-        result = wasShipHit(locationHit, i);
-        if (result != board::attackResult::miss)
-        {
-            break;
-        }
-    }
-
-    updateBoard(playerBoards::shipBoard, result, locationHit);
     return result;
 }
