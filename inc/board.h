@@ -72,6 +72,7 @@ class board
         attackResult attacked(coordinate locationHit);
 
     private:
+        void boardInit();
         void printShipOnBoard(int shipIndex);
         attackResult wasShipHit(coordinate location, int shipIndex);
 };

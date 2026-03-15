@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include <board.h>
 
@@ -76,84 +77,7 @@ board::ship::ship()
 // Constructor, Initializes the board
 board::board()
 {
-    constexpr int COLUMN_LABEL_INDEX = 1;
-    char * const firstShipRow = shipBoard[0];
-    char * const firstAttackRow = attackBoard[0];
-    int asciiNum = '1';
-
-    // Print the row for the column numbers
-    for (int x = 0; x < ROW_LENGTH; x++)
-    {
-        // Print the row seperators
-        if ((x + 1) % 4 == 0)
-        {
-            firstShipRow[x] = '|';
-            firstAttackRow[x] = '|';
-        }
-        // Print the numbers for each column
-        else if ((x + 1) % 2 == 0 && x != COLUMN_LABEL_INDEX)
-        {
-            // Print double digit columns
-            if (asciiNum > '9')
-            {
-                int columnNumber = asciiNum - '0';
-
-                // Tens place
-                firstShipRow[x] = '0' + columnNumber / 10;
-                firstAttackRow[x] = '0' + columnNumber / 10;
-                x++;
-                // Ones place
-                firstShipRow[x] = '0' + columnNumber % 10;
-                firstAttackRow[x] = '0' + columnNumber % 10;
-            }
-            // Print single digit column numbers
-            else
-            {
-                firstShipRow[x] = static_cast<char>(asciiNum);
-                firstAttackRow[x] = static_cast<char>(asciiNum);
-            }
-            asciiNum++;
-        }
-        // Else, it's an empty space
-        else
-        {
-            firstShipRow[x] = ' ';
-            firstAttackRow[x] = ' ';
-        }
-    }
-
-    // Print the rest of the rows for the board
-    for (int y = 1; y < BOARD_ROWS; y++)
-    {
-        for (int x = 0; x < ROW_LENGTH; x++)
-        {
-            // Print the letter for the first column
-            if (x == COLUMN_LABEL_INDEX)
-            {
-                char rowLabel = 'A' + y - 1;
-                shipBoard[y][x] = rowLabel;
-                attackBoard[y][x] = rowLabel;
-            }
-            // Print the row seperator
-            else if ((x + 1) % 4 == 0)
-            {
-                shipBoard[y][x] = '|';
-                attackBoard[y][x] = '|';
-            }
-            // Print the water for the attack board
-            else if ((x + 1) % 2 == 0)
-            {
-                shipBoard[y][x] = ' ';
-                attackBoard[y][x] = '~';
-            }
-            // Else, it's just an empty space
-            else 
-            {
-                shipBoard[y][x] = ' ';
-                attackBoard[y][x] = ' ';
-            }
-        }
-    }
+    boardInit();
 }
 
 // Return the name of the ship that is found at a given coordinate, (returns "EMPTY" if no ship is found)
@@ -317,7 +241,6 @@ void board::updateBoard(playerBoards board, attackResult result, coordinate coor
     }
 }
 
-// WITH THE INTRODUCTION OF NEW DEFEATED ENUM, AN UPDATE TO BOT.CPP IS NEEDED
 // Return a result based on an attack at a given configured coordinate
 board::attackResult board::attacked(coordinate locationHit)
 {
@@ -384,6 +307,88 @@ void board::printBoard(playerBoards boardPrinting) const
 void board::configureCoordinate(coordinate &coordinateConfiguring) const
 {
     coordinateConfiguring.x = coordinateConfiguring.x * EMPTY_ROW_SPACE + EMPTY_COLUMN_SPACE;
+}
+
+void board::boardInit()
+{
+    constexpr int COLUMN_LABEL_INDEX = 1;
+    char * const firstShipRow = shipBoard[0];
+    char * const firstAttackRow = attackBoard[0];
+    int asciiNum = '1';
+
+    // Print the row for the column numbers
+    for (int x = 0; x < ROW_LENGTH; x++)
+    {
+        // Print the row seperators
+        if ((x + 1) % 4 == 0)
+        {
+            firstShipRow[x] = '|';
+            firstAttackRow[x] = '|';
+        }
+        // Print the numbers for each column
+        else if ((x + 1) % 2 == 0 && x != COLUMN_LABEL_INDEX)
+        {
+            // Print double digit columns
+            if (asciiNum > '9')
+            {
+                int columnNumber = asciiNum - '0';
+
+                // Tens place
+                firstShipRow[x] = '0' + columnNumber / 10;
+                firstAttackRow[x] = '0' + columnNumber / 10;
+                x++;
+                // Ones place
+                firstShipRow[x] = '0' + columnNumber % 10;
+                firstAttackRow[x] = '0' + columnNumber % 10;
+            }
+            // Print single digit column numbers
+            else
+            {
+                firstShipRow[x] = static_cast<char>(asciiNum);
+                firstAttackRow[x] = static_cast<char>(asciiNum);
+            }
+            asciiNum++;
+        }
+        // Else, it's an empty space
+        else
+        {
+            firstShipRow[x] = ' ';
+            firstAttackRow[x] = ' ';
+        }
+    }
+
+    // Print the rest of the rows for the board
+    for (int y = 1; y < BOARD_ROWS; y++)
+    {
+        for (int x = 0; x < ROW_LENGTH; x++)
+        {
+            // Print the letter for the first column
+            if (x == COLUMN_LABEL_INDEX)
+            {
+                char rowLabel = 'A' + y - 1;
+                shipBoard[y][x] = rowLabel;
+                attackBoard[y][x] = rowLabel;
+            }
+            // Print the row seperator
+            else if ((x + 1) % 4 == 0)
+            {
+                shipBoard[y][x] = '|';
+                attackBoard[y][x] = '|';
+            }
+            // Print the water for the attack board
+            else if ((x + 1) % 2 == 0)
+            {
+                shipBoard[y][x] = ' ';
+                attackBoard[y][x] = '~';
+            }
+            // Else, it's just an empty space
+            else 
+            {
+                shipBoard[y][x] = ' ';
+                attackBoard[y][x] = ' ';
+            }
+        }
+    }
 }
 
 // Prints the ship onto the board
