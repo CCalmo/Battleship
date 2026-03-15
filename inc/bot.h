@@ -32,7 +32,7 @@ class bot
         bool originalShipSink(const char* nameOfShipHit) const;
         void switchDirection();
         void switchToQueuedShip(board opponentBoard, board::coordinate coordAttacked);
-        void switchToNewShip(board::coordinate coordAttacked);
+        void switchToNewShip(const char* shipName, board::coordinate coordAttacked);
 
         board::coordinate randCoord() const;
         board::direction randDirection() const;

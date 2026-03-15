@@ -121,7 +121,7 @@ board::attackResult bot::findDirection(board& opponentBoard)
     {
         // switch to attack the new ship
         case board::attackResult::discover: 
-            switchToNewShip(coordAttacking);
+            switchToNewShip(opponentBoard.getShipName(coordAttacking), coordAttacking);
             break;
 
         // Store the direction and the coordinate that was just hit and change m_mode to attack
@@ -174,7 +174,7 @@ board::attackResult bot::attack(board& opponentBoard)
         // Change direction because the ship must go in the other direction and switch to attacking the new ship
         case board::attackResult::discover: 
             switchDirection();
-            switchToNewShip(coordAttacking);
+            switchToNewShip(opponentBoard.getShipName(coordAttacking), coordAttacking);
             break;
 
         // Continue attacking in the same direction
@@ -249,10 +249,11 @@ void bot::switchDirection()
 }
 
 // Switch to a newly found ship and mark it's first location.
-void bot::switchToNewShip(board::coordinate coordAttacked)
+void bot::switchToNewShip(const char* shipName, board::coordinate coordAttacked)
 {
     m_shipQueueIndex++;
     m_shipQueue[m_shipQueueIndex].startingCoordinate = coordAttacked;
+    m_shipQueue[m_shipQueueIndex].name = shipName;
     m_mode = attackMode::findDirection;
 }
 

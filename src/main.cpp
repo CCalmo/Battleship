@@ -21,7 +21,6 @@ int main()
     // Futher Improvements:
     // Refactor the file input and reduce redundace in the player and bot.cpp
     // When you discover a ship, make you so that it is known which ship you found
-    // Move the the logic of losing in the attack function in board.cpp
 
     while(true)
     {
