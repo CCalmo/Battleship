@@ -12,29 +12,14 @@ game::game()
 
 int game::run()
 {
-    if (init())
+    if (!init())
     {
-        return -1;
+        return 1;
     }
 
     while(m_running)
     {
-        board::attackResult playerResult = m_player->playerTurn(m_bot->boards);
-        if (playerResult == board::attackResult::opponentDefeated)
-        {
-            std::cout << "You Won!\n";
-            m_running = false;
-            break;
-        }
-
-        board::attackResult botResult = m_bot->botTurn(m_player->boards);
-        if(botResult == board::attackResult::opponentDefeated)
-        {
-            std::cout << "You lost!\n";
-            m_running = false;
-            break;
-        }
-
+        update();
         DEBUG();
     }
 
@@ -42,6 +27,19 @@ int game::run()
 }
 
 bool game::init()
+{
+    if (!constructPlayers())
+    {
+        return false;
+    }
+
+    m_player->placeShips();
+    m_bot->placeShips();
+
+    return true;
+}
+
+bool game::constructPlayers()
 {
     try
     {
@@ -53,11 +51,26 @@ bool game::init()
         std::cerr << "Error: " << e.what() << '\n';
         return false;
     }
+    return true;
 }
 
 void game::update()
 {
-    return;
+    board::attackResult playerResult = m_player->playerTurn(m_bot->boards);
+    if (playerResult == board::attackResult::opponentDefeated)
+    {
+        std::cout << "You Won!\n";
+        m_running = false;
+        return;
+    }
+
+    board::attackResult botResult = m_bot->botTurn(m_player->boards);
+    if(botResult == board::attackResult::opponentDefeated)
+    {
+        std::cout << "You lost!\n";
+        m_running = false;
+        return;
+    }
 }
 
 // Prints the boards | DEBUG ONLY

@@ -103,7 +103,7 @@ const char* board::getShipName(coordinate coordinateSearching) const
 // Returns the name of a ship at the given index. (returns "EMPTY" if no ship is found)
 const char* board::getShipName(int shipIndex) const
 {
-    if (0 < shipIndex && shipIndex < 6)
+    if (0 <= shipIndex && shipIndex < 5)
     {
         return m_playerShips[shipIndex].name;
     }
@@ -114,7 +114,7 @@ const char* board::getShipName(int shipIndex) const
 // Returns the length of a ship at the given index. (returns -1 if no ship is found)
 const int board::getShipLength(int shipIndex) const
 {
-    if (0 < shipIndex && shipIndex < 6)
+    if (0 <= shipIndex && shipIndex < 5)
     {
         return m_playerShips[shipIndex].length;
     }

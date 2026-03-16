@@ -24,7 +24,7 @@ class bot
 
     public:
         bot();
-        bool placeShips();
+        void placeShips();
 
         board::attackResult botTurn(board& opponentBoard);
 

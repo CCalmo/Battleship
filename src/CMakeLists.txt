@@ -3,6 +3,7 @@ add_executable(${PROJECT_NAME}
     bot.cpp 
     player.cpp 
     main.cpp
+    game.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

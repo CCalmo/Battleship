@@ -25,7 +25,7 @@ bot::bot()
 }
 
 // Places the ships on a random location
-bool bot::placeShips()
+void bot::placeShips()
 {
     for (int i = 0; i < board::NUM_OF_SHIPS; i++)
     {

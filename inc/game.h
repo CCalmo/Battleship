@@ -1,6 +1,11 @@
 #ifndef GAME_H_
 #define GAME_H_
 
+#include <optional>
+
+#include <player.h>
+#include <bot.h>
+
 class game
 {
     private:
@@ -12,6 +17,7 @@ class game
         int run();
     private: 
         bool init();
+        bool constructPlayers();
         void update();
         void DEBUG();
 };
