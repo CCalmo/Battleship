@@ -24,44 +24,139 @@ bot::bot()
     }
 }
 
-board::direction bot::randDirection() const
+// Places the ships on a random location
+bool bot::placeShips()
 {
-    return directions[genDirection(gen)];
+    for (int i = 0; i < board::NUM_OF_SHIPS; i++)
+    {
+        // Randomly generate a location to place a ship
+        while (true)
+        {
+            if (boards.placeShip(i, randDirection(), randCoord()))
+            {
+                break;
+            }
+        }
+    }
 }
 
+// Get an action from the bot
+board::attackResult bot::botTurn(board& opponentBoard)
+{
+    switch (m_mode)
+    {
+        case attackMode::scout: 
+            return scout(opponentBoard);
+        case attackMode::findDirection: 
+            return findDirection(opponentBoard);
+        case attackMode::attack: 
+            return attack(opponentBoard);
+        default:
+            std::cerr << "m_mode switch failed";
+            return board::attackResult::miss;
+    }
+}
+
+// Check if the original targeting ship was sank or a ship of length 1 was sank instead
+bool bot::originalShipSink(const char* nameOfShipHit) const
+{
+    if (std::strcmp(m_shipQueue[m_shipQueueIndex].name, nameOfShipHit) == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+// Prints the result of the attack
+void bot::printResult(board::attackResult result, const char* shipName) const
+{
+    std::cout << "Your Opponent ";
+    // Print the correct outcome
+    switch(result)
+    {
+        case board::attackResult::discover: 
+            std::cout << "Discovered "; 
+            break;
+        case board::attackResult::hit: 
+            std::cout << "Hit "; 
+            break;
+        case board::attackResult::sank: 
+            std::cout << "Sank "; 
+            break;
+        // Return instead of break for the final two outcomes
+        case board::attackResult::miss: 
+            std::cout << "Missed!\n"; 
+            return;
+        case board::attackResult::opponentDefeated: 
+            std::cout << "Defeated You!\n"; 
+            return;
+    }
+    std::cout << "your " << shipName << "!\n";
+}
+
+// Swtich to target the opposite direction of a ship
+void bot::switchDirection()
+{
+    m_shipQueue[m_shipQueueIndex].shipDirection = oppositeDirection(m_shipQueue[m_shipQueueIndex].shipDirection);
+    m_shipQueue[m_shipQueueIndex].currentCoordinate =  m_shipQueue[m_shipQueueIndex].startingCoordinate;
+}
+
+// Resets the current element and checks the queue for any ships available. Switches attack mode based on queue
+void bot::switchToQueuedShip(board opponentBoard, board::coordinate coordAttacked)
+{
+    // Check if the original ship was sank, if so switch to the queue, else, switch directions
+    if (originalShipSink(opponentBoard.getShipName(coordAttacked)))
+    {
+        m_shipQueue[m_shipQueueIndex].currentCoordinate = NUL_COORDINATE;
+        m_shipQueue[m_shipQueueIndex].startingCoordinate = NUL_COORDINATE;
+        m_shipQueue[m_shipQueueIndex].knowsDirection = false;
+        
+        if (m_shipQueueIndex == 0)
+        {
+            m_mode = attackMode::scout;
+        }
+        else
+        {
+            m_shipQueueIndex--;
+            if(m_shipQueue[m_shipQueueIndex].knowsDirection)
+            {
+                m_mode = attackMode::attack;
+            }
+            else
+            {
+                m_mode = attackMode::findDirection;
+            }
+        }
+    }
+    else
+    {
+        switchDirection();
+    }
+    
+}
+
+// Switch to a newly found ship and mark it's first location.
+void bot::switchToNewShip(const char* shipName, board::coordinate coordAttacked)
+{
+    m_shipQueueIndex++;
+    m_shipQueue[m_shipQueueIndex].startingCoordinate = coordAttacked;
+    m_shipQueue[m_shipQueueIndex].name = shipName;
+    m_mode = attackMode::findDirection;
+}
+
+// Generate a random coordinate
 board::coordinate bot::randCoord() const
 {
     return {genCoord(gen), genCoord(gen)};
 }
 
-bool bot::placeShips(const char* fileName)
+// Generate a random direction
+board::direction bot::randDirection() const
 {
-    std::ifstream shipFile;
-    std::string firstLine;
-    shipFile.open(fileName);
-    if (!shipFile.is_open())
-    {
-        std::cerr << "Unable to open ship.csv file";
-        return false;
-    }
-
-    // Disgard the first line of the file
-    getline(shipFile, firstLine);
-    for (int i = 0; i < board::NUM_OF_SHIPS; i++)
-    {
-        char shipName[board::MAX_SHIP_NAME_LENGTH];
-        int shipLength;
-
-        if (!boards.readShipInfo(shipFile, shipName, shipLength))
-        {
-            return false;
-        }
-
-        while (!boards.placeShip(i, shipLength, shipName, randDirection(), randCoord()));
-    }
-
-    shipFile.close();
-    return true;
+    return directions[genDirection(gen)];
 }
 
 // Change to the opposite direction
@@ -93,6 +188,7 @@ board::attackResult bot::scout(board& opponentBoard)
         m_mode = attackMode::findDirection;
     }
     boards.updateBoard(board::playerBoards::attackBoard, result, coordAttacking);
+    printResult(result, opponentBoard.getShipName(coordAttacking));
     return result;
 }
 
@@ -141,6 +237,7 @@ board::attackResult bot::findDirection(board& opponentBoard)
     }
 
     boards.updateBoard(board::playerBoards::attackBoard, result, coordAttacking);
+    printResult(result, opponentBoard.getShipName(coordAttacking));
     return result;
 }
 
@@ -191,84 +288,6 @@ board::attackResult bot::attack(board& opponentBoard)
     }
 
     boards.updateBoard(board::playerBoards::attackBoard, result, coordAttacking);
+    printResult(result, opponentBoard.getShipName(coordAttacking));
     return result;
-}
-
-// Check if the original targeting ship was sank or a ship of length 1 was sank instead
-bool bot::originalShipSink(const char* nameOfShipHit) const
-{
-    if (std::strcmp(m_shipQueue[m_shipQueueIndex].name, nameOfShipHit) == 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-// Resets the current element and checks the queue for any ships available. Switches attack mode based on queue
-void bot::switchToQueuedShip(board opponentBoard, board::coordinate coordAttacked)
-{
-    // Check if the original ship was sank, if so switch to the queue, else, switch directions
-    if (originalShipSink(opponentBoard.getShipName(coordAttacked)))
-    {
-        m_shipQueue[m_shipQueueIndex].currentCoordinate = NUL_COORDINATE;
-        m_shipQueue[m_shipQueueIndex].startingCoordinate = NUL_COORDINATE;
-        m_shipQueue[m_shipQueueIndex].knowsDirection = false;
-        
-        if (m_shipQueueIndex == 0)
-        {
-            m_mode = attackMode::scout;
-        }
-        else
-        {
-            m_shipQueueIndex--;
-            if(m_shipQueue[m_shipQueueIndex].knowsDirection)
-            {
-                m_mode = attackMode::attack;
-            }
-            else
-            {
-                m_mode = attackMode::findDirection;
-            }
-        }
-    }
-    else
-    {
-        switchDirection();
-    }
-    
-}
-
-// Swtich to target the opposite direction of a ship
-void bot::switchDirection()
-{
-    m_shipQueue[m_shipQueueIndex].shipDirection = oppositeDirection(m_shipQueue[m_shipQueueIndex].shipDirection);
-    m_shipQueue[m_shipQueueIndex].currentCoordinate =  m_shipQueue[m_shipQueueIndex].startingCoordinate;
-}
-
-// Switch to a newly found ship and mark it's first location.
-void bot::switchToNewShip(const char* shipName, board::coordinate coordAttacked)
-{
-    m_shipQueueIndex++;
-    m_shipQueue[m_shipQueueIndex].startingCoordinate = coordAttacked;
-    m_shipQueue[m_shipQueueIndex].name = shipName;
-    m_mode = attackMode::findDirection;
-}
-
-board::attackResult bot::botTurn(board& opponentBoard)
-{
-    switch (m_mode)
-    {
-        case attackMode::scout: 
-            return scout(opponentBoard);
-        case attackMode::findDirection: 
-            return findDirection(opponentBoard);
-        case attackMode::attack: 
-            return attack(opponentBoard);
-        default:
-            std::cerr << "m_mode switch failed";
-            return board::attackResult::miss;
-    }
 }

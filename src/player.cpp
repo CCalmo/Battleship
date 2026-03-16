@@ -1,10 +1,8 @@
 #include <board.h>
-#include <fstream>
 #include <iostream>
 #include <limits>
 #include <cctype>
 #include <string>
-#include <stdexcept>
 
 #include <player.h>
 
@@ -27,6 +25,33 @@ int getIntBetween(int lowerBound, int upperBound, std::string phrase)
         }
     }
     return num;
+}
+
+// Prints the result of the attack
+void player::printResult(board::attackResult result, const char* shipName) const
+{
+    std::cout << "You ";
+    // Print the correct outcome
+    switch(result)
+    {
+        case board::attackResult::discover: 
+            std::cout << "Discovered "; 
+            break;
+        case board::attackResult::hit: 
+            std::cout << "Hit "; 
+            break;
+        case board::attackResult::sank: 
+            std::cout << "Sank "; 
+            break;
+        // Return instead of break for the final two outcomes
+        case board::attackResult::miss: 
+            std::cout << "Missed!\n"; 
+            return;
+        case board::attackResult::opponentDefeated: 
+            std::cout << "Defeated Your Opponent!\n"; 
+            return;
+    }
+    std::cout << "your opponent's " << shipName << "!\n";
 }
 
 // Gets a coordinate from the user
@@ -110,48 +135,27 @@ board::direction player::getDirection(const char* question) const
 }
 
 // Places the ships onto the board
-bool player::placeShips(const char* fileName)
+void player::placeShips()
 {
-    std::ifstream shipFile;
-    std::string firstLine;
-    shipFile.open(fileName);
-    if (!shipFile.is_open())
-    {
-        std::cerr << "Unable to open ship.csv file";
-        return false;
-    }
-    // Disgard the first line of the file
-    getline(shipFile, firstLine);
-
     // Only read lines for how ever many ships the 
     for (int i = 0; i < board::NUM_OF_SHIPS; i++)
     {
-        char shipName[board::MAX_SHIP_NAME_LENGTH];
-        int shipLength;
-
-        if (!boards.readShipInfo(shipFile, shipName, shipLength))
-        {
-            return false;
-        }
 
         boards.printBoard(board::playerBoards::shipBoard);
-        std::cout << "You are placing your " << shipName << "!\tLength: " << shipLength << '\n';
+        std::cout << "You are placing your " << boards.getShipName(i) << "!\tLength: " << std::to_string(boards.getShipLength(i)) << '\n';
         board::direction shipDirection = getDirection("How would you like to place your ship? (1.)Up (2.)Down (3.)Left (4.)Right\n");
         board::coordinate shipCoordinate;
 
         while (true)
         {
             shipCoordinate = getCoordinate("Where would you like to place your ship? (A1 - J10) ");
-            if (boards.placeShip(i, shipLength, shipName, shipDirection, shipCoordinate))
+            if (boards.placeShip(i, shipDirection, shipCoordinate))
             {
                 break;
             }
             std::cout << "The space is currently occupied\n";
         }
     }
-
-    shipFile.close();
-    return true;
 }
 
 // Gets a coordinate from the user to attack
@@ -167,6 +171,8 @@ board::attackResult player::attack(board &opponentBoard)
 
     board::attackResult result = opponentBoard.attacked(coordinateAttacking);
     boards.updateBoard(board::playerBoards::attackBoard, result, coordinateAttacking);
+
+    printResult(result, opponentBoard.getShipName(coordinateAttacking));
     return result;
 }
 

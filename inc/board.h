@@ -1,8 +1,6 @@
 #ifndef BOARD_H_
 #define BOARD_H_
 
-#include <fstream>
-
 class board
 {
     public:
@@ -40,8 +38,9 @@ class board
         static constexpr int EMPTY_COLUMN_SPACE = 1;
 
         // There are 3 char's per row, first index is y, second is x. Values begin at 1 and end at 10
-        char shipBoard[BOARD_ROWS][ROW_LENGTH];
-        char attackBoard[BOARD_ROWS][ROW_LENGTH];
+        char m_shipBoard[BOARD_ROWS][ROW_LENGTH];
+        char m_attackBoard[BOARD_ROWS][ROW_LENGTH];
+        bool m_shipDataRead;
 
         struct ship
         {
@@ -59,12 +58,14 @@ class board
 
     public:
         board();
+
         const char* getShipName(coordinate coordinateSearching) const;
+        const char* getShipName(int shipIndex) const;
+        const int getShipLength(int shipIndex) const;
         bool lost() const;
-        bool readShipInfo(std::ifstream &file, char *shipName, int &shipLength) const;
         bool isSpaceAvailable(playerBoards boardChecking, coordinate locationChecking) const;
         bool incrementCoordinate(direction shipDirection, coordinate &coordinateIncrementing) const;
-        bool placeShip(int shipIndex, int length, char name[MAX_SHIP_NAME_LENGTH + 1], direction directionFacing, coordinate startingCoord);
+        bool placeShip(int shipIndex, direction directionFacing, coordinate startingCoord);
         void configureCoordinate(coordinate &coordinateConfiguring) const;
         void updateBoard(playerBoards board, attackResult result, coordinate coordinateAttacked);
         void printBoard(playerBoards boardPrinting) const;
@@ -73,7 +74,9 @@ class board
 
     private:
         void boardInit();
+        void shipInit();
         void printShipOnBoard(int shipIndex);
+        void loadShipData(const char (*shipName)[MAX_SHIP_NAME_LENGTH + 1], const int shipLength[NUM_OF_SHIPS]);
         attackResult wasShipHit(coordinate location, int shipIndex);
 };
 

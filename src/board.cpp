@@ -1,6 +1,8 @@
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <sstream>
+#include <stdexcept>
 
 #include <board.h>
 
@@ -74,13 +76,14 @@ board::ship::ship()
     }
 }
 
-// Constructor, Initializes the board
+// Constructor, Initializes the board and Ships
 board::board()
 {
     boardInit();
+    shipInit();
 }
 
-// Return the name of the ship that is found at a given coordinate, (returns "EMPTY" if no ship is found)
+// Return the name of the ship that is found at a given coordinate. (returns "EMPTY" if no ship is found)
 const char* board::getShipName(coordinate coordinateSearching) const
 {
     // Search all ships return the name if one is found
@@ -97,6 +100,28 @@ const char* board::getShipName(coordinate coordinateSearching) const
     return "EMPTY\n";
 }
 
+// Returns the name of a ship at the given index. (returns "EMPTY" if no ship is found)
+const char* board::getShipName(int shipIndex) const
+{
+    if (0 < shipIndex && shipIndex < 6)
+    {
+        return m_playerShips[shipIndex].name;
+    }
+
+    return "EMPTY\n";
+}
+
+// Returns the length of a ship at the given index. (returns -1 if no ship is found)
+const int board::getShipLength(int shipIndex) const
+{
+    if (0 < shipIndex && shipIndex < 6)
+    {
+        return m_playerShips[shipIndex].length;
+    }
+
+    return -1;
+}
+
 // Check to see if the player has lost
 bool board::lost() const
 {
@@ -111,49 +136,6 @@ bool board::lost() const
     return true;
 }
 
-// Read one line at a time from the ship csv file
-bool board::readShipInfo(std::ifstream &file, char *shipName, int &shipLength) const
-{
-    std::string fileLine;
-
-    // The line in the file has two values, the name and the length
-    while (true)
-    {
-        // If we reached the end of the file, return false.
-        if (file.eof())
-        {
-            return false;
-        }
-        // Read a line from the file
-        getline(file, fileLine);
-
-        int endOfName = fileLine.find(',');
-        int numIndex = fileLine.find(',') + 1;
-
-        // If the name is longer than the max length, skip it
-        if (endOfName > board::MAX_SHIP_NAME_LENGTH)
-        {
-            continue;
-        }
-
-        // If after the file name the value is not a number or it's higher than the max length, skip it.
-        if(!std::isdigit(fileLine[numIndex]) || fileLine[numIndex] - '0' > board::MAX_SHIP_LENGTH)
-        {
-            continue;
-        }
-
-        // Copy the name and length of the ship
-        for (int i = 0; i < endOfName; i++)
-        {
-            shipName[i] = fileLine[i];
-        }
-        shipName[endOfName] = '\0';
-        shipLength = fileLine[numIndex] - '0';
-        break;
-    }
-    return true;
-}
-
 // Check to see if the chosen board is empty
 bool board::isSpaceAvailable(playerBoards boardChecking, coordinate locationChecking) const
 {
@@ -163,11 +145,11 @@ bool board::isSpaceAvailable(playerBoards boardChecking, coordinate locationChec
     switch (boardChecking)
     {
     case playerBoards::shipBoard:
-        board = shipBoard;
+        board = m_shipBoard;
         emptyCharacter = ' ';
         break;
     case playerBoards::attackBoard:
-        board = attackBoard;
+        board = m_attackBoard;
         emptyCharacter = '~';
         break;
     default:
@@ -194,26 +176,29 @@ bool board::incrementCoordinate(direction shipDirection, coordinate &coordinateI
     return true;
 }
 
-// Returns true if you can place the ship and edits the ship's info
-bool board::placeShip(int currentShip, int length, char name[MAX_SHIP_NAME_LENGTH + 1], direction shipDirection, coordinate startingCoord)
+// Places the ship of a given index. Returns false if there isn't enough space
+bool board::placeShip(int shipIndex, direction shipDirection, coordinate startingCoord)
 {
     configureCoordinate(startingCoord);
+
     // Store the coordiantes into a temporary array in case the ship is out of bounds.
-    for (int i = 0; i < length; i++)
+    for (int i = 0; i < m_playerShips[shipIndex].length; i++)
     {
         if (!isSpaceAvailable(playerBoards::shipBoard, startingCoord))
+        {
             return false;
+        }
         
-        m_playerShips[currentShip].location[i] = startingCoord;
-        m_playerShips[currentShip].placesHit[i] = false;
+        m_playerShips[shipIndex].location[i] = startingCoord;
+        m_playerShips[shipIndex].placesHit[i] = false;
 
-        if (!incrementCoordinate(shipDirection, startingCoord) && i + 1 != length)
+        if (!incrementCoordinate(shipDirection, startingCoord) && i + 1 != m_playerShips[shipIndex].length)
+        {
             return false;
+        }
     }
-    m_playerShips[currentShip].length = length;
-    std::strcpy(m_playerShips[currentShip].name, name);
 
-    printShipOnBoard(currentShip);
+    printShipOnBoard(shipIndex);
     return true;
 }
 
@@ -224,11 +209,11 @@ void board::updateBoard(playerBoards board, attackResult result, coordinate coor
     char (*boardUpdating)[ROW_LENGTH] = nullptr;
     if (board == playerBoards::shipBoard)
     {
-        boardUpdating = shipBoard;
+        boardUpdating = m_shipBoard;
     }
     else
     {
-        boardUpdating = attackBoard;
+        boardUpdating = m_attackBoard;
     }
 
    if (result == board::attackResult::miss)
@@ -282,10 +267,10 @@ void board::printBoard(playerBoards boardPrinting) const
     switch (boardPrinting)
     {
     case playerBoards::shipBoard:
-        board = shipBoard;
+        board = m_shipBoard;
         break;
     case playerBoards::attackBoard:
-        board = attackBoard;
+        board = m_attackBoard;
         break;
     default:
         std::cerr << "Invalid Mode, select mode from the playerBoards enum class";
@@ -309,11 +294,12 @@ void board::configureCoordinate(coordinate &coordinateConfiguring) const
     coordinateConfiguring.x = coordinateConfiguring.x * EMPTY_ROW_SPACE + EMPTY_COLUMN_SPACE;
 }
 
+// Draws the ship and attack board
 void board::boardInit()
 {
     constexpr int COLUMN_LABEL_INDEX = 1;
-    char * const firstShipRow = shipBoard[0];
-    char * const firstAttackRow = attackBoard[0];
+    char * const firstShipRow = m_shipBoard[0];
+    char * const firstAttackRow = m_attackBoard[0];
     int asciiNum = '1';
 
     // Print the row for the column numbers
@@ -366,29 +352,83 @@ void board::boardInit()
             if (x == COLUMN_LABEL_INDEX)
             {
                 char rowLabel = 'A' + y - 1;
-                shipBoard[y][x] = rowLabel;
-                attackBoard[y][x] = rowLabel;
+                m_shipBoard[y][x] = rowLabel;
+                m_attackBoard[y][x] = rowLabel;
             }
             // Print the row seperator
             else if ((x + 1) % 4 == 0)
             {
-                shipBoard[y][x] = '|';
-                attackBoard[y][x] = '|';
+                m_shipBoard[y][x] = '|';
+                m_attackBoard[y][x] = '|';
             }
             // Print the water for the attack board
             else if ((x + 1) % 2 == 0)
             {
-                shipBoard[y][x] = ' ';
-                attackBoard[y][x] = '~';
+                m_shipBoard[y][x] = ' ';
+                m_attackBoard[y][x] = '~';
             }
             // Else, it's just an empty space
             else 
             {
-                shipBoard[y][x] = ' ';
-                attackBoard[y][x] = ' ';
+                m_shipBoard[y][x] = ' ';
+                m_attackBoard[y][x] = ' ';
             }
         }
     }
+}
+
+// Reads the ships.csv and assigns the values to each ship
+void board::shipInit()
+{
+    // Add 1 for the null terminator
+    char shipNames[NUM_OF_SHIPS][MAX_SHIP_NAME_LENGTH + 1];
+    int shipLengths[NUM_OF_SHIPS];
+    int shipNum = 0;
+
+    std::ifstream shipData("ships/ships.csv");
+
+    // Read the ship data from the csv
+    try 
+    {
+        std::string fileLine;
+        while(std::getline(shipData, fileLine))
+        {
+            std::stringstream ss(fileLine);
+            std::string name;
+            std::string length;
+
+            std::getline(ss, name, ',');
+            std::getline(ss, length, ',');
+
+            // Make sure the name is no greater than 20 and the length is greater than 0 but less than 6
+            if(name.length() < 20 && length.length() == 1 && '0' < length[0] && length[0] < '6')
+            {
+                std::strcpy(shipNames[shipNum], name.c_str());
+                shipLengths[shipNum] = std::stoi(length);
+                shipNum++;
+            }
+
+            // If the csv file is greater than 5 ships, stop reading at the 5th count
+            if (shipNum == NUM_OF_SHIPS)
+            {
+                m_shipDataRead = true;
+                break;
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Unable to open ships.csv: " << e.what() << std::endl;
+        throw;
+    }
+
+    // If the number of ships we read is less than the number of ships we need, flag it (the file could've been shorter than 5 ships)
+    if (shipNum != NUM_OF_SHIPS)
+    {
+        m_shipDataRead = false;
+    }
+
+    loadShipData(shipNames, shipLengths);
 }
 
 // Prints the ship onto the board
@@ -401,7 +441,20 @@ void board::printShipOnBoard(int currentShip)
         {
             return;
         }
-        shipBoard[m_playerShips[currentShip].location[i].y][m_playerShips[currentShip].location[i].x] = '#';
+        m_shipBoard[m_playerShips[currentShip].location[i].y][m_playerShips[currentShip].location[i].x] = '#';
+    }
+}
+
+// Load the ship data if the data was read successfully
+void board::loadShipData(const char (*shipName)[MAX_SHIP_NAME_LENGTH + 1], const int shipLength[NUM_OF_SHIPS])
+{
+    if (m_shipDataRead)
+    {
+        for (int i = 0; i < NUM_OF_SHIPS; i++)
+        {
+            std::strcpy(m_playerShips[i].name, shipName[i]);
+            m_playerShips[i].length = shipLength[i];
+        }
     }
 }
 

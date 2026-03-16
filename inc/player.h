@@ -6,12 +6,15 @@
 class player
 {
     private:
+        void printResult(board::attackResult result, const char* shipName) const;
         board::coordinate getCoordinate(const char* question) const;
         board::direction getDirection(const char* question) const;
         board::attackResult attack(board &opponentBoard);
+
     public:
         board boards;
-        bool placeShips(const char* fileName);
+
+        void placeShips();
         board::attackResult playerTurn(board &opponentBoard);
 };
 

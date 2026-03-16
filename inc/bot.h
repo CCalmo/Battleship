@@ -24,12 +24,13 @@ class bot
 
     public:
         bot();
-        bool placeShips(const char* fileName);
+        bool placeShips();
 
         board::attackResult botTurn(board& opponentBoard);
 
     private:
         bool originalShipSink(const char* nameOfShipHit) const;
+        void printResult(board::attackResult result, const char* shipName) const;
         void switchDirection();
         void switchToQueuedShip(board opponentBoard, board::coordinate coordAttacked);
         void switchToNewShip(const char* shipName, board::coordinate coordAttacked);
